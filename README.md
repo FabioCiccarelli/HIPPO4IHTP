@@ -2,19 +2,23 @@
 
 **A two-phase matheuristic for the Integrated Healthcare Timetabling Problem (IHTC 2024)**
 
-HIPPO decomposes the IHTC problem into two sequential MIP phases solved with [Gurobi](https://www.gurobi.com/):
+This repository contains the source code and computational results associated with the paper:
 
-| Phase | Name   | Decisions                                            | Objective terms               |
-|-------|--------|------------------------------------------------------|-------------------------------|
-| 1     | Light  | Patient admission, room assignment, surgery schedule | W1, W5, W6, W7, W8 + proxy   |
-| 2     | Full   | Nurse-to-room assignment, skill/workload violations  | W2, W3, W4                    |
+> Ciccarelli, F., Di Biase, A., and Furini, F.  
+> *A Two-Phase Matheuristic for the Integrated Healthcare Timetabling Problem* (2026)
+
+
+The algorithm targets the Integrated Healthcare Timetabling Problem (IHTP) defined in the [IHTC 2024 challenge](https://ihtc2024.github.io/), a combinatorial optimization competition focused on integrated scheduling of patient admissions, room assignments, surgical planning, and nurse rostering in a hospital setting.
+
+HIPPO decomposes the IHTP problem into two sequential MIP phases solved with [Gurobi](https://www.gurobi.com()):
+
+| Phase | Name   | Decisions                                            |
+|-------|--------|------------------------------------------------------|
+| 1     | Light  | Patient admission, room assignment, surgery schedule |
+| 2     | Full   | Nurse-to-room assignment, skill/workload violations  | 
 
 Phase 1 fixes the admission/room/surgery variables; Phase 2 uses those fixed values
 to optimize nurse scheduling and soft-constraint violations.
-
-A configurable **proxy term** (weighted by *λ*, default 0) is added to the
-Phase-1 objective to steer room-occupancy decisions and ease Phase-2 nurse
-scheduling. Several strategies are available (see *Proxy strategies* below).
 
 ---
 
@@ -39,7 +43,7 @@ srcNew/
 │   ├── public/      # i01.json … i30.json
 │   ├── hidden/      # m01.json … m30.json
 │   └── test/        # test01.json … test10.json
-├── computationalResults/      # Excel/CSV with experimental results
+├── computationalResults/      # Instance-wise results reported in the paper
 ├── pyproject.toml
 ├── .gitignore
 └── README.md
@@ -163,6 +167,16 @@ print(result.summary())
 
 ---
 
+## Computational results
+
+The `computationalResults/` directory contains the full instance-wise results discussed in the paper. For each dataset (public, hidden, test) and each instance, the files report objective values, bound, gap, and runtimes for both phases, as well as soft-constraint breakdowns. These tables correspond directly to the experiments presented in the paper.
+
+---
+
 ## License
 
-MIT
+This software is released under an academic and research license. Any publication that uses or builds upon this code must cite the paper listed above. See [LICENSE](LICENSE) for the full terms.
+
+
+---
+For questions or issues, please contact: [f.ciccarelli@uniroma1.it](mailto:f.ciccarelli@uniroma1.it)
