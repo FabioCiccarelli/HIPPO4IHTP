@@ -1,0 +1,35 @@
+# Byte-compiled / optimized
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Gurobi
+*.lp
+*.ilp
+*.sol
+*.mps
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Numerical experiments / test infrastructure (non fa parte del core)
+scripts/
+tests/
+analysis/
+results/
+
+
