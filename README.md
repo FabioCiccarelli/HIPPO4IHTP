@@ -25,42 +25,48 @@ to optimize nurse scheduling and soft-constraint violations.
 ## Repository structure
 
 ```
-srcNew/
-├── hippo/                     # Main Python package
-│   ├── __init__.py
-│   ├── __main__.py            # Entry point: python -m hippo
-│   ├── config.py              # CLI arguments, ProxyStrategy enum, SolverConfig
-│   ├── heuristics/            # Warm-start heuristics for Phase 1 and Phase 2
-│   ├── instance.py            # Instance parser (JSON → dataclass)
-│   ├── solver.py              # Two-phase orchestrator
-│   ├── models/
-│   │   ├── base.py            # Abstract base with common Gurobi helpers
-│   │   ├── phase1.py          # Phase 1: admission + rooms + surgery + proxy
-│   │   └── phase2.py          # Phase 2: nurse assignment + violations
-│   └── solution/
-│       └── exporter.py        # IHTC-format JSON exporter
-├── data/
-│   ├── public/      # i01.json … i30.json
-│   ├── hidden/      # m01.json … m30.json
-│   └── test/        # test01.json … test10.json
-├── computationalResults/      # Instance-wise results reported in the paper
-├── pyproject.toml
-├── .gitignore
-└── README.md
+hippo/                         # Main Python package
+├── __init__.py
+├── __main__.py                # Entry point: python -m hippo
+├── config.py                  # CLI arguments, ProxyStrategy enum, SolverConfig
+├── heuristics/                # Warm-start heuristics for Phase 1 and Phase 2
+├── instance.py                # Instance parser (JSON → dataclass)
+├── solver.py                  # Two-phase orchestrator
+├── models/
+│   ├── base.py                # Abstract base with common Gurobi helpers
+│   ├── phase1.py              # Phase 1: admission + rooms + surgery + proxy
+│   └── phase2.py              # Phase 2: nurse assignment + violations
+└── solution/
+    └── exporter.py            # IHTC-format JSON exporter
+data/
+├── public/                    # i01.json … i30.json
+├── hidden/                    # m01.json … m30.json
+├── test/                      # test01.json … test10.json
+└── longerHorizon/             # lHH_N.json (extended-horizon instances)
+computationalResults/          # Instance-wise results reported in the paper
+pyproject.toml
+.gitignore
+README.md
 ```
 
 ### Output layout
 
-All outputs are written to `results/{dataset}/{instance_id}/`:
+For named datasets outputs go to `results/{dataset}/{instance_id}/`; for arbitrary files they go to `results/{parent_dir}/{stem}/`:
 
 ```
 results/
-└── public/
-    └── 01/
-        ├── sol_light.json         # Phase-1 solution (patients only)
-        ├── sol_full.json          # Full solution (patients + nurses)
-        ├── vars_light.txt         # Active variables from Phase 1
-        └── vars_full.txt          # Active variables from Phase 2
+├── public/
+│   └── 01/
+│       ├── sol_light.json         # Phase-1 solution (patients only)
+│       ├── sol_full.json          # Full solution (patients + nurses)
+│       ├── vars_light.txt         # Active variables from Phase 1
+│       └── vars_full.txt          # Active variables from Phase 2
+└── longerHorizon/
+    └── l35_1/
+        ├── sol_light.json
+        ├── sol_full.json
+        ├── vars_light.txt
+        └── vars_full.txt
 ```
 
 ---
@@ -79,13 +85,25 @@ pip install -e ".[dev]"
 
 ## Quick start
 
+Two ways to specify the instance:
+
+**Named dataset** (public / hidden / test):
 ```bash
 # Public instance i01, default 30 minutes per phase
 python -m hippo public 1
 
 # Hidden instance m03, custom time limits
 python -m hippo hidden 3 --time-limit-phase1 1800 --time-limit-phase2 600
+```
 
+**Arbitrary file** (`--file`), for any JSON instance (including `longerHorizon`):
+```bash
+python -m hippo --file data/longerHorizon/l35_1.json
+python -m hippo --file /path/to/my_custom_instance.json --time-limit 3600
+```
+
+Other options work the same in both modes:
+```bash
 # No proxy term
 python -m hippo public 1 --proxy-strategy none
 
@@ -133,7 +151,7 @@ The Phase-1 objective can include a proxy term weighted by *λ* (`--proxy-weight
 | **Stable rooms**     | `stable_rooms`      | Penalize day-to-day variation in occupied rooms          |
 | **Balance workload** | `balance_workload`  | Penalize workload imbalance across rooms per day         |
 | **Balance skill**    | `balance_skill`     | Penalize skill-requirement imbalance across rooms per day|
-| **Hybrid**           | `hybrid`            | Penalize `W2 * proxy_skill + W4 * proxy_workload`        |
+| **Hybrid**           | `hybrid`            | Penalize skill and workload imbalances                   |
 | **None**             | `none`              | No proxy — pure Phase-1 objective (default)              |
 
 All strategies are mutually exclusive.
@@ -148,9 +166,11 @@ penalize deviations from the per-day mean across rooms.
 ## Configuration via Python API
 
 ```python
+from pathlib import Path
 from hippo.config import ProxyStrategy, SolverConfig
 from hippo.solver import run
 
+# Named dataset
 config = SolverConfig(
     dataset="public",
     instance_id=1,
@@ -163,6 +183,15 @@ config = SolverConfig(
 )
 result = run(config)
 print(result.summary())
+
+# Arbitrary instance file
+config2 = SolverConfig(
+    instance_file=Path("data/longerHorizon/l35_1.json"),
+    time_limit_phase1=1800,
+    time_limit_phase2=600,
+)
+result2 = run(config2)
+print(result2.summary())
 ```
 
 ---

@@ -41,8 +41,10 @@ def instance_filename(dataset: str, instance_id: int) -> str:
 def load_bks(data_dir: Path, dataset: str) -> dict[str, int]:
     """Load best-known values from bestKnownValues.txt.
 
-    Returns empty dict if the file doesn't exist (hidden instances).
+    Returns empty dict if the file doesn't exist (hidden instances or custom paths).
     """
+    if not dataset:
+        return {}
     bks_path = data_dir / dataset / "bestKnownValues.txt"
     if not bks_path.exists():
         return {}
@@ -58,9 +60,10 @@ def load_bks(data_dir: Path, dataset: str) -> dict[str, int]:
 class SolverConfig:
     """All parameters for a HIPPO run."""
 
-    # instance
+    # instance — use dataset+instance_id or instance_file (mutually exclusive)
     dataset: str = "public"
     instance_id: int = 1
+    instance_file: Path | None = None  # direct path to any JSON instance
 
     # time limits (seconds per phase)
     time_limit_phase1: float = 1800.0
@@ -96,23 +99,31 @@ class SolverConfig:
             self.data_dir = self.root_dir / "data"
         if self.results_dir is None:
             self.results_dir = self.root_dir / "results"
-        if self.dataset not in DATASET_CHOICES:
+        if self.instance_file is None and self.dataset not in DATASET_CHOICES:
             raise ValueError(f"dataset must be one of {DATASET_CHOICES}, got '{self.dataset}'")
         if self.gurobi_threads is not None and self.gurobi_threads < 1:
             raise ValueError("gurobi_threads must be >= 1 when provided")
 
     @property
     def instance_name(self) -> str:
+        if self.instance_file is not None:
+            return Path(self.instance_file).stem
         prefix = _FILE_PREFIX[self.dataset]
         return f"{prefix}{self.instance_id:02d}"
 
     @property
     def instance_path(self) -> Path:
+        if self.instance_file is not None:
+            return Path(self.instance_file)
         return self.data_dir / self.dataset / instance_filename(self.dataset, self.instance_id)
 
     @property
     def _output_dir(self) -> Path:
-        d = self.results_dir / self.dataset / f"{self.instance_id:02d}"
+        if self.instance_file is not None:
+            p = Path(self.instance_file)
+            d = self.results_dir / p.parent.name / p.stem
+        else:
+            d = self.results_dir / self.dataset / f"{self.instance_id:02d}"
         d.mkdir(parents=True, exist_ok=True)
         return d
 
@@ -131,10 +142,19 @@ def parse_args(argv: list[str] | None = None) -> SolverConfig:
         description="HIPPO — Two-phase matheuristic for the IHTC 2024 problem.",
     )
 
-    parser.add_argument("dataset", choices=DATASET_CHOICES,
-                        help="Dataset: public, hidden, or test")
-    parser.add_argument("instance_id", type=int,
-                        help="Instance number (e.g. 7 for public/i07)")
+    # Instance selection: either dataset+id (named datasets) or --file (arbitrary path)
+    instance_group = parser.add_mutually_exclusive_group(required=True)
+    instance_group.add_argument(
+        "--file", type=Path, dest="instance_file", metavar="PATH",
+        help="Path to any JSON instance file (overrides dataset/instance_id)",
+    )
+    instance_group.add_argument(
+        "dataset", nargs="?", choices=DATASET_CHOICES,
+        help="Dataset name: public, hidden, or test",
+    )
+
+    parser.add_argument("instance_id", type=int, nargs="?",
+                        help="Instance number within the dataset (e.g. 7 for public/i07)")
 
     parser.add_argument("--time-limit", type=float, default=1800.0,
                         help="Time limit per phase in seconds (default: 1800)")
@@ -175,9 +195,17 @@ def parse_args(argv: list[str] | None = None) -> SolverConfig:
 
     args = parser.parse_args(argv)
 
+    # When using named dataset, instance_id is also required
+    if args.instance_file is None:
+        if args.dataset is None:
+            parser.error("positional argument 'dataset' is required unless --file is used")
+        if args.instance_id is None:
+            parser.error("positional argument 'instance_id' is required unless --file is used")
+
     return SolverConfig(
-        dataset=args.dataset,
-        instance_id=args.instance_id,
+        dataset=args.dataset or "public",
+        instance_id=args.instance_id or 1,
+        instance_file=args.instance_file,
         time_limit_phase1=args.time_limit_phase1 if args.time_limit_phase1 is not None else args.time_limit,
         time_limit_phase2=args.time_limit_phase2 if args.time_limit_phase2 is not None else args.time_limit,
         mip_gap_phase1=args.mip_gap_phase1 if args.mip_gap_phase1 is not None else args.mip_gap,

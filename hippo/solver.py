@@ -77,7 +77,8 @@ def run(config: SolverConfig) -> HippoResult:
     logger.info("Loading instance %s from %s", config.instance_name, config.instance_path)
     instance: Instance = load_instance(config.instance_path)
 
-    bks_map = load_bks(config.data_dir, config.dataset)
+    dataset_for_bks = "" if config.instance_file is not None else config.dataset
+    bks_map = load_bks(config.data_dir, dataset_for_bks)
     bks_value = bks_map.get(config.instance_name)
 
     # --- Fase 1: ammissione pazienti, stanze, chirurgia ---
