@@ -1,10 +1,12 @@
 # HIPPO
 
+![HIPPO logo](./logo.png)
+
 **A two-phase matheuristic for the Integrated Healthcare Timetabling Problem (IHTC 2024)**
 
 This repository contains the source code and computational results associated with the paper:
 
-> Ciccarelli, F., Di Biase, A., and Furini, F.  
+> Ciccarelli, F., Di Biase, A., and Furini, F. 
 > *A Two-Phase Matheuristic for the Integrated Healthcare Timetabling Problem* (2026)
 
 
@@ -43,7 +45,7 @@ data/
 ├── hidden/                    # m01.json … m30.json
 ├── test/                      # test01.json … test10.json
 └── longerHorizon/             # lHH_N.json (extended-horizon instances)
-computationalResults/          # Instance-wise results reported in the paper
+computationalResults/          # Instance-wise computational results
 pyproject.toml
 .gitignore
 README.md

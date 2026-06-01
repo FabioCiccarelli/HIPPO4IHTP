@@ -89,6 +89,11 @@ class SolverConfig:
     verbose: bool = True
     gurobi_threads: int | None = None
 
+    # extra Gurobi params (applied to both phases)
+    gurobi_heuristics: float | None = None   # fraction of time on MIP heuristics (0–1)
+    gurobi_mip_focus: int | None = None      # 0=balanced 1=feasibility 2=optimality 3=bound
+    gurobi_submip_nodes: int | None = None   # node limit for each sub-MIP heuristic call
+
     # paths — resolved in __post_init__
     root_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parents[1])
     data_dir: Path | None = None
@@ -132,6 +137,17 @@ class SolverConfig:
 
     def solution_path(self, phase: str) -> Path:
         return self._output_dir / f"sol_{phase}.json"
+
+    @property
+    def gurobi_extra_params(self) -> dict[str, object]:
+        params: dict[str, object] = {}
+        if self.gurobi_heuristics is not None:
+            params["Heuristics"] = self.gurobi_heuristics
+        if self.gurobi_mip_focus is not None:
+            params["MIPFocus"] = self.gurobi_mip_focus
+        if self.gurobi_submip_nodes is not None:
+            params["SubMIPNodes"] = self.gurobi_submip_nodes
+        return params
 
 
 def parse_args(argv: list[str] | None = None) -> SolverConfig:
@@ -185,6 +201,16 @@ def parse_args(argv: list[str] | None = None) -> SolverConfig:
     parser.add_argument("--disable-phase2-heuristic", dest="use_phase2_heuristic",
                         action="store_false")
 
+    parser.add_argument("--gurobi-heuristics", type=float, default=None,
+                        metavar="F",
+                        help="Gurobi Heuristics param: fraction of time on MIP heuristics (0–1)")
+    parser.add_argument("--gurobi-mip-focus", type=int, default=None,
+                        choices=[0, 1, 2, 3],
+                        help="Gurobi MIPFocus: 0=balanced 1=feasibility 2=optimality 3=bound")
+    parser.add_argument("--gurobi-submip-nodes", type=int, default=None,
+                        metavar="N",
+                        help="Gurobi SubMIPNodes: node limit for each sub-MIP heuristic call")
+
     parser.add_argument("--relaxation", action="store_true",
                         help="Solve LP relaxation instead of MIP")
     parser.add_argument("--quiet", action="store_true")
@@ -226,6 +252,9 @@ def parse_args(argv: list[str] | None = None) -> SolverConfig:
         relaxation=args.relaxation,
         verbose=not args.quiet,
         gurobi_threads=args.threads,
+        gurobi_heuristics=args.gurobi_heuristics,
+        gurobi_mip_focus=args.gurobi_mip_focus,
+        gurobi_submip_nodes=args.gurobi_submip_nodes,
         data_dir=args.data_dir,
         results_dir=args.results_dir,
     )

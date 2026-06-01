@@ -33,6 +33,8 @@ class HippoResult:
     build_time_phase2: float
     solve_result_phase2: SolveResult
     phase2_objective: float | None
+    heuristic_obj_phase1: float | None = None
+    heuristic_obj_phase2: float | None = None
     bks: int | None = None
 
     @property
@@ -96,6 +98,7 @@ def run(config: SolverConfig) -> HippoResult:
     logger.info("Phase-1 model built in %.3f s", build_time1)
 
     phase1_mip_time_limit = config.time_limit_phase1
+    heuristic_obj1: float | None = None
     if (not config.relaxation) and config.use_phase1_heuristic and config.heuristic_time_limit_phase1 > 0.0:
         heuristic_t0 = time.perf_counter()
         heuristic1 = run_phase1_heuristic(
@@ -115,8 +118,9 @@ def run(config: SolverConfig) -> HippoResult:
             phase1_mip_time_limit,
         )
         if heuristic1 is not None:
+            heuristic_obj1 = heuristic1.objective_value()
             heuristic1.apply_mip_start(builder1)
-            logger.info("Applied Phase-1 heuristic MIP start (objective %.3f)", heuristic1.objective_value())
+            logger.info("Applied Phase-1 heuristic MIP start (objective %.3f)", heuristic_obj1)
         else:
             logger.warning("Phase-1 heuristic did not produce a feasible warm start")
 
@@ -125,6 +129,7 @@ def run(config: SolverConfig) -> HippoResult:
         mip_gap=config.mip_gap_phase1,
         threads=config.gurobi_threads,
         verbose=config.verbose,
+        extra_params=config.gurobi_extra_params or None,
     )
 
     phase1_obj: float | None = None
@@ -143,6 +148,8 @@ def run(config: SolverConfig) -> HippoResult:
             build_time_phase2=0.0,
             solve_result_phase2=SolveResult(status=-1, runtime=0.0),
             phase2_objective=None,
+            heuristic_obj_phase1=heuristic_obj1,
+            heuristic_obj_phase2=None,
             bks=bks_value,
         )
 
@@ -157,6 +164,7 @@ def run(config: SolverConfig) -> HippoResult:
     logger.info("Phase-2 model built in %.3f s", build_time2)
 
     phase2_mip_time_limit = config.time_limit_phase2
+    heuristic_obj2: float | None = None
     if (not config.relaxation) and config.use_phase2_heuristic and config.heuristic_time_limit_phase2 > 0.0:
         heuristic_t0 = time.perf_counter()
         heuristic2 = run_phase2_heuristic(
@@ -174,8 +182,9 @@ def run(config: SolverConfig) -> HippoResult:
             phase2_mip_time_limit,
         )
         if heuristic2 is not None:
+            heuristic_obj2 = heuristic2.objective_value()
             heuristic2.apply_mip_start()
-            logger.info("Applied Phase-2 heuristic MIP start (objective %.3f)", heuristic2.objective_value())
+            logger.info("Applied Phase-2 heuristic MIP start (objective %.3f)", heuristic_obj2)
         else:
             logger.warning("Phase-2 heuristic did not produce a complete warm start")
 
@@ -184,6 +193,7 @@ def run(config: SolverConfig) -> HippoResult:
         mip_gap=config.mip_gap_phase2,
         threads=config.gurobi_threads,
         verbose=config.verbose,
+        extra_params=config.gurobi_extra_params or None,
     )
 
     phase2_obj: float | None = None
@@ -203,6 +213,8 @@ def run(config: SolverConfig) -> HippoResult:
         build_time_phase2=build_time2,
         solve_result_phase2=result2,
         phase2_objective=phase2_obj,
+        heuristic_obj_phase1=heuristic_obj1,
+        heuristic_obj_phase2=heuristic_obj2,
         bks=bks_value,
     )
 

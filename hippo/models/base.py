@@ -52,6 +52,7 @@ class BaseModelBuilder:
         mip_gap: float | None = None,
         threads: int | None = None,
         verbose: bool = True,
+        extra_params: dict[str, Any] | None = None,
     ) -> SolveResult:
 
         if time_limit is not None:
@@ -62,6 +63,9 @@ class BaseModelBuilder:
             self.model.setParam("Threads", threads)
         if not verbose:
             self.model.setParam("OutputFlag", 0)
+        if extra_params:
+            for key, val in extra_params.items():
+                self.model.setParam(key, val)
 
         self.model.optimize()
 
