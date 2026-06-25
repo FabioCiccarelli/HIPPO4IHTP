@@ -16,9 +16,7 @@ def main() -> None:
     log_level = logging.INFO if config.verbose else logging.WARNING
     logging.basicConfig(level=log_level, format="%(message)s")
 
-    # Prevent gurobipy (≥11) from duplicating solver output: its Python
-    # logger would propagate to the root handler while the C-level
-    # OutputFlag already writes the same lines to stdout.
+    # Prevent gurobipy (≥11) from duplicating solver output
     logging.getLogger("gurobipy").setLevel(logging.WARNING)
 
     result = run(config)
